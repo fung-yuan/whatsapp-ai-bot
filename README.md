@@ -1,6 +1,6 @@
 # 🤖 WhatsApp AI Bot
 
-AI-powered WhatsApp customer support bot using **n8n**, **WAHA**, and **Google Gemini**.
+AI-powered WhatsApp customer support bot using **n8n**, **WAHA**, and **AI** (Gemini/OpenAI/etc).
 
 **Features:** Text & voice messages • Conversation memory • 100% free & self-hosted
 
@@ -18,7 +18,7 @@ AI-powered WhatsApp customer support bot using **n8n**, **WAHA**, and **Google G
 ### Prerequisites
 
 - VPS with Docker
-- Google Gemini API key - [Get free](https://makersuite.google.com/app/apikey)
+- AI API key (your choice: [Gemini](https://makersuite.google.com/app/apikey), [OpenAI](https://platform.openai.com/api-keys), etc.)
 
 ### Installation
 
@@ -41,7 +41,7 @@ manage-waha
 # Import workflow
 # 1. Open http://YOUR_IP:5678
 # 2. Import workflow.json
-# 3. Add credentials (Gemini API + WAHA)
+# 3. Add AI credentials (Gemini/OpenAI/whatever you prefer)
 # 4. Create n8n Table: "chat_history" with columns: phone, role, content
 # 5. Update "Download Audio" node URL with your server IP
 
@@ -95,10 +95,10 @@ API Key: waha_abc123...
 ## 🎯 Workflow Logic
 
 1. **Receive message** → Webhook catches WhatsApp message
-2. **Check if audio** → If yes: download → transcribe with Gemini
+2. **Check if audio** → If yes: download → transcribe with AI
 3. **Save to history** → Store in n8n Table
 4. **Get conversation** → Load past messages
-5. **AI response** → Gemini generates reply
+5. **AI response** → AI generates reply
 6. **Save bot reply** → Store in history
 7. **Send to WhatsApp** → Deliver via WAHA
 
@@ -140,7 +140,7 @@ Change `YOUR_IP` to your actual server IP.
 - Check webhook URL matches n8n
 
 **Voice not working:**
-- Verify Gemini API quota
+- Verify AI API quota
 - Check audio download URL has correct port
 
 **Script command not found:**
