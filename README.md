@@ -27,11 +27,14 @@ AI-powered WhatsApp customer support bot using **n8n**, **WAHA**, and **Google G
 git clone https://github.com/fung-yuan/whatsapp-ai-bot.git
 cd whatsapp-ai-bot
 
+# Make script globally available
+sudo ln -s $(pwd)/manage-waha.sh /usr/local/bin/manage-waha
+
 # Install n8n
 docker run -d --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n n8nio/n8n
 
-# Create WAHA instance using script
-./manage-waha.sh
+# Create WAHA instance
+manage-waha
 # Choose option 1: Add New Client
 # Enter client name, select port 3000, generate API key
 
@@ -50,25 +53,14 @@ docker run -d --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n n8nio/n8n
 
 ---
 
-## 🔧 Multi-Client Management Script
+## 🔧 Multi-Client Management
 
-### What It Does
+The `manage-waha` command lets you run **multiple WhatsApp bots** (one per client) on the same server.
 
-The `manage-waha.sh` script lets you run **multiple WhatsApp bots** (one per client) on the same server. Each client gets:
-- Dedicated WAHA container
-- Unique port (3000, 3001, 3002...)
-- Own WhatsApp number
-- Isolated data
-
-### Why You Need It
-
-**Without script:** Manual docker commands, port management, credential tracking  
-**With script:** Interactive menu, auto port detection, credential management
-
-### How to Use
+### Usage
 
 ```bash
-./manage-waha.sh
+manage-waha  # Run from anywhere!
 ```
 
 **Menu:**
@@ -77,11 +69,19 @@ The `manage-waha.sh` script lets you run **multiple WhatsApp bots** (one per cli
 3. **Stop Client** - Pause a client
 4. **Remove Client** - Delete client completely
 
-**Example - Adding Client:**
+Each client gets:
+- Dedicated WAHA container
+- Unique port (3000, 3001, 3002...)
+- Own WhatsApp number
+- Isolated data
+
+**Example:**
 ```
+$ manage-waha
+
 Enter client name: Pizza Shop
-Select port [3000-3010]: 3001
-Generate API key automatically? [Y/n]: Y
+Select port: 3001
+Generate API key automatically? Y
 
 ✅ Client Created!
 Dashboard: http://YOUR_IP:3001/dashboard
@@ -89,8 +89,6 @@ Username: admin
 Password: (auto-generated)
 API Key: waha_abc123...
 ```
-
-Then update n8n workflow to use port 3001 for this client.
 
 ---
 
@@ -138,17 +136,15 @@ Change `YOUR_IP` to your actual server IP.
 
 **Bot doesn't reply:**
 - Check workflow is active (toggle in n8n)
-- Verify WAHA session status in script (option 2)
+- Verify WAHA session: Run `manage-waha` → Option 2
 - Check webhook URL matches n8n
 
 **Voice not working:**
 - Verify Gemini API quota
 - Check audio download URL has correct port
 
-**Multi-client issues:**
-- Run `./manage-waha.sh` → Option 2 to see all clients
-- Each client needs unique port
-- Update n8n workflow port for each client
+**Script command not found:**
+- Re-run: `sudo ln -s $(pwd)/manage-waha.sh /usr/local/bin/manage-waha`
 
 ---
 
