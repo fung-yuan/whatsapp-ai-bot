@@ -1,94 +1,178 @@
 # 🤖 WhatsApp AI Bot
 
-Build your own AI-powered WhatsApp customer support bot using **n8n**, **WAHA**, and **Google Gemini**.
+AI-powered WhatsApp customer support bot using **n8n**, **WAHA**, and **Google Gemini**.
 
-## ✨ What This Does
+**Features:** Text & voice messages • Conversation memory • 100% free & self-hosted
 
-- 💬 Responds to WhatsApp messages automatically using AI
-- 🎤 Handles both text and voice messages
-- 🧠 Remembers conversation history
-- 🆓 100% free and self-hosted
+---
 
-## 🎥 Video Tutorial
+## 📦 What's Inside
 
-**Full setup guide:** [Watch on YouTube](YOUR_VIDEO_LINK)
+- `workflow.json` - n8n workflow to import
+- `docker-compose.yml` - Single WAHA instance
+- `manage-waha.sh` - Multi-client manager script
+- `.env.example` - Configuration template
 
-## 📦 What's Included
+---
 
-```
-📁 whatsapp-ai-bot/
-├── workflow.json          # n8n workflow (import this)
-├── docker-compose.yml     # WAHA setup
-├── manage-waha.sh         # Multi-client manager
-├── .env.example           # Configuration template
-└── docs/                  # Detailed documentation
-```
-
-## ⚡ Quick Setup
+## 🚀 Setup
 
 ### Prerequisites
-- VPS/Server with Docker installed
-- Google Gemini API key ([Get it free](https://makersuite.google.com/app/apikey))
 
-### Install
+- VPS with Docker
+- Google Gemini API key - [Get free](https://makersuite.google.com/app/apikey)
+
+### Installation
 
 ```bash
-# 1. Clone repository
+# Clone repo
 git clone https://github.com/fung-yuan/whatsapp-ai-bot.git
 cd whatsapp-ai-bot
 
-# 2. Configure
+# Configure
 cp .env.example .env
-nano .env  # Add your API keys
+nano .env  # Add your keys
 
-# 3. Start WAHA
+# Start WAHA
 docker-compose up -d
 
-# 4. Install n8n
+# Install n8n
 docker run -d --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n n8nio/n8n
 
-# 5. Import workflow
-# Open http://YOUR_IP:5678 and import workflow.json
+# Import workflow
+# 1. Open http://YOUR_IP:5678
+# 2. Import workflow.json
+# 3. Add credentials (Gemini API + WAHA)
+# 4. Create n8n Table: "chat_history" with columns: phone, role, content
 
-# 6. Scan QR
-# Open http://YOUR_IP:3000/dashboard and scan WhatsApp QR code
+# Connect WhatsApp
+# 1. Open http://YOUR_IP:3000/dashboard
+# 2. Get credentials: docker logs waha | grep DASHBOARD
+# 3. Scan QR code
 ```
 
-**Done! 🎉** Send a message to test your bot.
+**Done!** Test by sending a message.
 
-## 🔧 For Multiple Clients
+---
 
-Use the management script:
+## 🔧 Multi-Client Management Script
+
+### What It Does
+
+The `manage-waha.sh` script lets you run **multiple WhatsApp bots** (one per client) on the same server. Each client gets:
+- Dedicated WAHA container
+- Unique port (3000, 3001, 3002...)
+- Own WhatsApp number
+- Isolated data
+
+### Why You Need It
+
+**Without script:** Manual docker-compose editing, port conflicts, credential tracking  
+**With script:** Interactive menu, auto port detection, credential management
+
+### How to Use
 
 ```bash
 ./manage-waha.sh
 ```
 
-Easily add/remove clients with different WhatsApp numbers on different ports.
+**Menu:**
+1. **Add New Client** - Creates new WAHA instance, shows credentials
+2. **List All Clients** - View all clients with ports/credentials/status
+3. **Stop Client** - Pause a client
+4. **Remove Client** - Delete client completely
 
-## 📚 Documentation
+**Example - Adding Client:**
+```
+Enter client name: Pizza Shop
+Select port [3000-3010]: 3001
+Generate API key automatically? [Y/n]: Y
 
-- [Detailed Setup Guide](docs/QUICKSTART.md)
-- [Script Usage](docs/SCRIPT-USAGE.md)
+✅ Client Created!
+Dashboard: http://YOUR_IP:3001/dashboard
+Username: admin
+Password: (auto-generated)
+API Key: waha_abc123...
+```
 
-## 🛠️ Tech Stack
-
-- **WAHA** - WhatsApp HTTP API
-- **n8n** - Workflow automation
-- **Google Gemini** - AI responses
-- **Docker** - Containerization
-
-## 📄 License
-
-MIT - Do whatever you want!
-
-## ⭐ Support
-
-If this helped you:
-- 🌟 Star this repo
-- 📢 Share with others
-- 💬 Drop a comment on the [YouTube video](YOUR_VIDEO_LINK)
+Then update n8n workflow to use port 3001 for this client.
 
 ---
 
-**Built for the automation community** ❤️
+## 📝 Configuration
+
+Edit `.env`:
+
+```bash
+WAHA_API_KEY=your-secure-key
+SERVER_IP=your.server.ip
+GOOGLE_GEMINI_API_KEY=your-gemini-key
+```
+
+---
+
+## 🎯 Workflow Logic
+
+1. **Receive message** → Webhook catches WhatsApp message
+2. **Check if audio** → If yes: download → transcribe with Gemini
+3. **Save to history** → Store in n8n Table
+4. **Get conversation** → Load past messages
+5. **AI response** → Gemini generates reply
+6. **Save bot reply** → Store in history
+7. **Send to WhatsApp** → Deliver via WAHA
+
+---
+
+## 🛠️ Customization
+
+### Change AI Personality
+
+Edit "Basic LLM Chain" node in n8n workflow:
+
+```
+You are a friendly assistant for [YOUR BUSINESS]
+
+Services:
+- [List your services]
+
+Rules:
+- Speak [LANGUAGE]
+- Keep replies SHORT
+```
+
+### Update Server IP
+
+In workflow, find "Download Audio" node:
+```
+URL: http://YOUR_IP:3000{{ $json.mediaPath }}
+```
+
+Change `YOUR_IP` to your actual server IP.
+
+---
+
+## 🔍 Troubleshooting
+
+**Bot doesn't reply:**
+- Check workflow is active (toggle in n8n)
+- Verify WAHA session: `curl http://localhost:3000/api/sessions/default -H 'X-Api-Key: your-key'`
+- Check webhook URL in WAHA matches n8n
+
+**Voice not working:**
+- Verify Gemini API has enough quota
+- Check audio download URL has correct port
+
+**Multi-client issues:**
+- Run `./manage-waha.sh` → Option 2 to see all clients
+- Each client needs unique port
+- Update n8n workflow port for each client
+
+---
+
+## 📄 License
+
+MIT
+
+---
+
+**Questions?** Open an issue or watch the tutorial video!
