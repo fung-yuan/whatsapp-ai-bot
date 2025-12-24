@@ -9,9 +9,7 @@ AI-powered WhatsApp customer support bot using **n8n**, **WAHA**, and **Google G
 ## 📦 What's Inside
 
 - `workflow.json` - n8n workflow to import
-- `docker-compose.yml` - Single WAHA instance
 - `manage-waha.sh` - Multi-client manager script
-- `.env.example` - Configuration template
 
 ---
 
@@ -29,26 +27,23 @@ AI-powered WhatsApp customer support bot using **n8n**, **WAHA**, and **Google G
 git clone https://github.com/fung-yuan/whatsapp-ai-bot.git
 cd whatsapp-ai-bot
 
-# Configure
-cp .env.example .env
-nano .env  # Add your keys
-
-# Start WAHA
-docker-compose up -d
-
 # Install n8n
 docker run -d --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n n8nio/n8n
+
+# Create WAHA instance using script
+./manage-waha.sh
+# Choose option 1: Add New Client
+# Enter client name, select port 3000, generate API key
 
 # Import workflow
 # 1. Open http://YOUR_IP:5678
 # 2. Import workflow.json
 # 3. Add credentials (Gemini API + WAHA)
 # 4. Create n8n Table: "chat_history" with columns: phone, role, content
+# 5. Update "Download Audio" node URL with your server IP
 
 # Connect WhatsApp
-# 1. Open http://YOUR_IP:3000/dashboard
-# 2. Get credentials: docker logs waha | grep DASHBOARD
-# 3. Scan QR code
+# Open dashboard URL shown by script and scan QR code
 ```
 
 **Done!** Test by sending a message.
@@ -67,7 +62,7 @@ The `manage-waha.sh` script lets you run **multiple WhatsApp bots** (one per cli
 
 ### Why You Need It
 
-**Without script:** Manual docker-compose editing, port conflicts, credential tracking  
+**Without script:** Manual docker commands, port management, credential tracking  
 **With script:** Interactive menu, auto port detection, credential management
 
 ### How to Use
@@ -96,18 +91,6 @@ API Key: waha_abc123...
 ```
 
 Then update n8n workflow to use port 3001 for this client.
-
----
-
-## 📝 Configuration
-
-Edit `.env`:
-
-```bash
-WAHA_API_KEY=your-secure-key
-SERVER_IP=your.server.ip
-GOOGLE_GEMINI_API_KEY=your-gemini-key
-```
 
 ---
 
@@ -155,11 +138,11 @@ Change `YOUR_IP` to your actual server IP.
 
 **Bot doesn't reply:**
 - Check workflow is active (toggle in n8n)
-- Verify WAHA session: `curl http://localhost:3000/api/sessions/default -H 'X-Api-Key: your-key'`
-- Check webhook URL in WAHA matches n8n
+- Verify WAHA session status in script (option 2)
+- Check webhook URL matches n8n
 
 **Voice not working:**
-- Verify Gemini API has enough quota
+- Verify Gemini API quota
 - Check audio download URL has correct port
 
 **Multi-client issues:**
