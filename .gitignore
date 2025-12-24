@@ -1,0 +1,20 @@
+# Environment files
+.env
+*.env
+
+# Logs
+*.log
+
+# Docker volumes
+volumes/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# n8n data (if stored locally)
+n8n_data/

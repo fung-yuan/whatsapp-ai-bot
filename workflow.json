@@ -1,0 +1,415 @@
+{
+    "name": "WhatsApp AI Bot",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "whatsapp",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2.1,
+            "position": [
+                -64,
+                -160
+            ],
+            "id": "729cf83a-6130-4e8b-aa73-7470a4c2870e",
+            "name": "Webhook",
+            "webhookId": "0b6f283d-23c8-4622-92d6-237c9c436145"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Get the WAHA webhook data\nconst payload = $json.body.payload;\n\n// Skip bot's own messages\nif (payload.fromMe) {\n  return [];\n}\n\n// Extract phone number (clean format)\nconst phone = payload.from;\n\n// Extract media URL and clean it (remove localhost prefix)\nlet mediaPath = null;\nif (payload.media?.url) {\n  const fullUrl = payload.media.url;\n  const pathStart = fullUrl.indexOf('/api/');\n  if (pathStart !== -1) {\n    mediaPath = fullUrl.substring(pathStart);\n  }\n}\n\n// Determine message type and extract text\nlet messageText = \"\";\nlet isAudio = false;\nlet mediaType = null;\n\nif (payload.hasMedia) {\n  mediaType = payload._data?.type;\n  \n  if (mediaType === 'ptt' || mediaType === 'audio') {\n    isAudio = true;\n    messageText = \"[AUDIO]\";\n  } else if (mediaType === 'image') {\n    messageText = \"[IMAGE]\";\n  } else if (mediaType === 'video') {\n    messageText = \"[VIDEO]\";\n  } else {\n    messageText = \"[MEDIA]\";\n  }\n} else {\n  messageText = payload.body;\n}\n\nreturn {\n  phone: phone,\n  messageText: messageText,\n  isAudio: isAudio,\n  mediaPath: mediaPath,\n  mediaType: mediaType,\n  mimetype: payload.media?.mimetype,\n  messageId: payload.id\n};"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                160,
+                -160
+            ],
+            "id": "9d29c30e-8614-4d40-98ed-1aff50b75ebb",
+            "name": "Parse WAHA Webhook"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 3
+                    },
+                    "conditions": [
+                        {
+                            "id": "70bf3aee-64cc-4cb7-9602-e7c0a1c01d9e",
+                            "leftValue": "={{ $json.isAudio }}",
+                            "rightValue": true,
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.3,
+            "position": [
+                384,
+                -160
+            ],
+            "id": "5982429d-c430-44a2-b76e-9d9f6e086502",
+            "name": "Check if Audio"
+        },
+        {
+            "parameters": {
+                "dataTableId": {
+                    "__rl": true,
+                    "value": "REPLACE_WITH_YOUR_TABLE_ID",
+                    "mode": "list",
+                    "cachedResultName": "chat_history"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "role": "user",
+                        "phone": "={{ $json.phone }}",
+                        "content": "={{ $json.messageText }}"
+                    }
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.dataTable",
+            "typeVersion": 1,
+            "position": [
+                608,
+                -64
+            ],
+            "id": "034b7710-62b6-45ea-b96d-ddd3f24caf94",
+            "name": "Save User Message"
+        },
+        {
+            "parameters": {
+                "operation": "get",
+                "dataTableId": {
+                    "__rl": true,
+                    "value": "REPLACE_WITH_YOUR_TABLE_ID",
+                    "mode": "list",
+                    "cachedResultName": "chat_history"
+                },
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "phone",
+                            "keyValue": "={{ $('Parse WAHA Webhook').item.json.phone }}"
+                        }
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.dataTable",
+            "typeVersion": 1,
+            "position": [
+                832,
+                -64
+            ],
+            "id": "b6f33bf6-9673-4403-b20b-5fc35c6ddf5a",
+            "name": "Get Conversation History"
+        },
+        {
+            "parameters": {
+                "jsCode": "const messages = $input.all().map(item => item.json);\nmessages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));\n\nlet conversationHistory = \"\";\nfor (const msg of messages) {\n  const role = msg.role === \"user\" ? \"Customer\" : \"Bot\";\n  conversationHistory += `${role}: ${msg.content}\\n`;\n}\n\nreturn {\n  conversationHistory: conversationHistory,\n  phone: messages.length > 0 ? messages[0].phone : $('Parse WAHA Webhook').first().json.phone\n};"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1056,
+                -64
+            ],
+            "id": "08c81bb2-3bb3-4fc1-9b58-9cc855d7a69a",
+            "name": "Format History"
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ $json.conversationHistory }}",
+                "messages": {
+                    "messageValues": [
+                        {
+                            "message": "You are a friendly AI assistant. Keep replies SHORT and helpful. Respond in the same language as the customer."
+                        }
+                    ]
+                },
+                "batching": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.chainLlm",
+            "typeVersion": 1.7,
+            "position": [
+                1280,
+                -64
+            ],
+            "id": "946808ea-1168-4331-bede-06b763416920",
+            "name": "AI Response"
+        },
+        {
+            "parameters": {
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+            "typeVersion": 1,
+            "position": [
+                1352,
+                160
+            ],
+            "id": "76b4f87b-0f50-42d0-9403-5eac275ad5a1",
+            "name": "Google Gemini"
+        },
+        {
+            "parameters": {
+                "resource": "Chatting",
+                "operation": "Send Text",
+                "session": "default",
+                "chatId": "={{ $('Format History').item.json.phone }}",
+                "text": "={{ $('AI Response').item.json.text }}",
+                "requestOptions": {}
+            },
+            "type": "n8n-nodes-waha.WAHA",
+            "typeVersion": 202411,
+            "position": [
+                1856,
+                -64
+            ],
+            "id": "c0e400ff-8c0d-42af-8b1c-c65eca7bb273",
+            "name": "Send WhatsApp Reply"
+        },
+        {
+            "parameters": {
+                "dataTableId": {
+                    "__rl": true,
+                    "value": "REPLACE_WITH_YOUR_TABLE_ID",
+                    "mode": "list",
+                    "cachedResultName": "chat_history"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "role": "assistant",
+                        "phone": "={{ $('Format History').item.json.phone }}",
+                        "content": "={{ $('AI Response').item.json.text }}"
+                    }
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.dataTable",
+            "typeVersion": 1,
+            "position": [
+                1632,
+                -64
+            ],
+            "id": "9e351966-c71e-4a70-89da-baa3e7b30bcb",
+            "name": "Save Bot Response"
+        },
+        {
+            "parameters": {
+                "url": "=http://YOUR_SERVER_IP:3000{{ $json.mediaPath }}",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "options": {
+                    "response": {
+                        "response": {
+                            "responseFormat": "file"
+                        }
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.3,
+            "position": [
+                608,
+                -256
+            ],
+            "id": "a15089b6-4c5b-4a8d-9006-a1a5014aaf29",
+            "name": "Download Audio"
+        },
+        {
+            "parameters": {
+                "resource": "audio",
+                "modelId": {
+                    "__rl": true,
+                    "value": "models/gemini-2.5-flash",
+                    "mode": "list",
+                    "cachedResultName": "models/gemini-2.5-flash"
+                },
+                "inputType": "binary",
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.googleGemini",
+            "typeVersion": 1,
+            "position": [
+                832,
+                -256
+            ],
+            "id": "1067dcd6-91f0-4b79-8bbf-a48de9adc663",
+            "name": "Transcribe Audio"
+        },
+        {
+            "parameters": {
+                "jsCode": "const transcription = $json.content?.parts?.[0]?.text || \"[Transcription failed]\";\nconst phone = $('Parse WAHA Webhook').item.json.phone;\n\nreturn {\n  phone: phone,\n  messageText: transcription,\n  isAudio: false\n};"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1040,
+                -256
+            ],
+            "id": "13bd978b-2196-4d12-a131-f829362da076",
+            "name": "Format Transcription"
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Parse WAHA Webhook",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse WAHA Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Check if Audio",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check if Audio": {
+            "main": [
+                [
+                    {
+                        "node": "Download Audio",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Save User Message",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Save User Message": {
+            "main": [
+                [
+                    {
+                        "node": "Get Conversation History",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Conversation History": {
+            "main": [
+                [
+                    {
+                        "node": "Format History",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format History": {
+            "main": [
+                [
+                    {
+                        "node": "AI Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Google Gemini": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "AI Response",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Response": {
+            "main": [
+                [
+                    {
+                        "node": "Save Bot Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Save Bot Response": {
+            "main": [
+                [
+                    {
+                        "node": "Send WhatsApp Reply",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Download Audio": {
+            "main": [
+                [
+                    {
+                        "node": "Transcribe Audio",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Transcribe Audio": {
+            "main": [
+                [
+                    {
+                        "node": "Format Transcription",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format Transcription": {
+            "main": [
+                [
+                    {
+                        "node": "Save User Message",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {
+        "executionOrder": "v1"
+    }
+}
