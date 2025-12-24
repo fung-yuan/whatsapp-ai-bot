@@ -23,6 +23,9 @@ AI-powered WhatsApp customer support bot using **n8n**, **WAHA**, and **AI** (Ge
 ### Installation
 
 ```bash
+# Install git (if not already installed)
+sudo apt update && sudo apt install -y git
+
 # Clone repo
 git clone https://github.com/fung-yuan/whatsapp-ai-bot.git
 cd whatsapp-ai-bot
