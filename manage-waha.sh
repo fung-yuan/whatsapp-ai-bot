@@ -9,7 +9,9 @@ set -e
 PORT_START=3000
 PORT_END=3010
 MAX_DISPLAY=5
-CONFIG_FILE=".waha-clients.json"
+# Determine script directory (resolving symlinks)
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+CONFIG_FILE="$SCRIPT_DIR/.waha-clients.json"
 SERVER_IP=$(hostname -I | awk '{print $1}')
 
 # Colors
